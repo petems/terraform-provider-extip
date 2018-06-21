@@ -1,5 +1,7 @@
 # terraform-provider-extip
 
+[![Build Status](https://travis-ci.org/petems/terraform-provider-extip.svg?branch=master)](https://travis-ci.org/petems/terraform-provider-extip)
+
 Terraform provider for getting your current external IP as a data source.
 
 ## Requirements

@@ -31,8 +31,20 @@ Outputs:
 external_ip = 238.209.109.16
 ```
 
+You can also specify what resolver you want to use to get the URL:
 
-Also look at the example under [/examples](/examples).
+```
+data "extip" "external_ip_from_aws" {
+  resolver = "https://checkip.amazonaws.com/"
+}
+
+output "external_ip_from_aws" {
+  value = "${data.extip.external_ip_from_aws.ipaddress}"
+}
+```
+
+
+Examples are under [/examples](/examples).
 
 ## Building the Provider
 Clone and build the repository
@@ -57,7 +69,6 @@ make build
 
 ## TODO
 
-* Add configuration for the specification of URL's to resolve the external IP from
 * Add configuration of the consensus timing (ie. how long it will wait to resolve)
 * Add option of getting ipv6 or ipv4 ipaddress
 

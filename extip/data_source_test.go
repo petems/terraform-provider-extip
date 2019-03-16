@@ -29,11 +29,11 @@ func TestDataSource_compileUnknownKeyError(t *testing.T) {
 	})
 }
 
-type TestHttpMock struct {
+type TestHTTPMock struct {
 	server *httptest.Server
 }
 
-const testDataSourceConfig_basic = `
+const testDataSourceConfigBasic = `
 data "extip" "http_test" {
   resolver = "%s/meta_%d.txt"
 }
@@ -43,15 +43,15 @@ output "ipaddress" {
 `
 
 func TestDataSource_http200(t *testing.T) {
-	testHttpMock := setUpMockHttpServer()
+	TestHTTPMock := setUpMockHTTPServer()
 
-	defer testHttpMock.server.Close()
+	defer TestHTTPMock.server.Close()
 
 	resource.UnitTest(t, resource.TestCase{
 		Providers: testProviders,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: fmt.Sprintf(testDataSourceConfig_basic, testHttpMock.server.URL, 200),
+				Config: fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.server.URL, 200),
 				Check: func(s *terraform.State) error {
 					_, ok := s.RootModule().Resources["data.extip.http_test"]
 					if !ok {
@@ -74,22 +74,22 @@ func TestDataSource_http200(t *testing.T) {
 	})
 }
 func TestDataSource_http404(t *testing.T) {
-	testHttpMock := setUpMockHttpServer()
+	TestHTTPMock := setUpMockHTTPServer()
 
-	defer testHttpMock.server.Close()
+	defer TestHTTPMock.server.Close()
 
 	resource.UnitTest(t, resource.TestCase{
 		Providers: testProviders,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config:      fmt.Sprintf(testDataSourceConfig_basic, testHttpMock.server.URL, 404),
+				Config:      fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.server.URL, 404),
 				ExpectError: regexp.MustCompile("HTTP request error. Response code: 404"),
 			},
 		},
 	})
 }
 
-func setUpMockHttpServer() *TestHttpMock {
+func setUpMockHTTPServer() *TestHTTPMock {
 	Server := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -105,7 +105,7 @@ func setUpMockHttpServer() *TestHttpMock {
 		}),
 	)
 
-	return &TestHttpMock{
+	return &TestHTTPMock{
 		server: Server,
 	}
 }

@@ -6,9 +6,9 @@ data "extip" "external_ip_from_aws" {
 }
 
 output "external_ip" {
-  value = "${data.extip.external_ip.ipaddress}"
+  value = data.extip.external_ip.ipaddress
 }
 
 output "external_ip_from_aws" {
-  value = "${data.extip.external_ip_from_aws.ipaddress}"
+  value = data.extip.external_ip_from_aws.ipaddress
 }

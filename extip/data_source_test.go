@@ -2,6 +2,7 @@ package extip
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -23,7 +24,7 @@ func TestDataSource_compileUnknownKeyError(t *testing.T) {
 		Steps: []resource.TestStep{
 			resource.TestStep{
 				Config:      testDataSourceUnknownKeyError,
-				ExpectError: regexp.MustCompile("invalid or unknown key: this_doesnt_exist"),
+				ExpectError: regexp.MustCompile("An argument named \"this_doesnt_exist\" is not expected here."),
 			},
 		},
 	})
@@ -38,7 +39,7 @@ data "extip" "http_test" {
   resolver = "%s/meta_%d.txt"
 }
 output "ipaddress" {
-  value = "${data.extip.http_test.ipaddress}"
+  value = data.extip.http_test.ipaddress
 }
 `
 
@@ -108,4 +109,44 @@ func setUpMockHTTPServer() *TestHTTPMock {
 	return &TestHTTPMock{
 		server: Server,
 	}
+}
+
+const testDataSourceConfigReal = `
+data "extip" "default_test" {
+}
+output "ipaddress" {
+  value = data.extip.default_test.ipaddress
+}
+`
+
+func IsIpv4Net(host string) bool {
+	return net.ParseIP(host) != nil
+}
+
+func TestDataSource_DefaultResolver(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		Providers: testProviders,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config: testDataSourceConfigReal,
+				Check: func(s *terraform.State) error {
+					_, ok := s.RootModule().Resources["data.extip.default_test"]
+					if !ok {
+						return fmt.Errorf("missing data resource")
+					}
+
+					outputs := s.RootModule().Outputs
+
+					if !IsIpv4Net(fmt.Sprintf("%v", outputs["ipaddress"].Value)) {
+						return fmt.Errorf(
+							`'ipaddress' output was not a valid IP address: %s`,
+							outputs["ipaddress"].Value,
+						)
+					}
+
+					return nil
+				},
+			},
+		},
+	})
 }

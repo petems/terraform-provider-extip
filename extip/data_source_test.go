@@ -30,6 +30,24 @@ func TestDataSource_compileUnknownKeyError(t *testing.T) {
 	})
 }
 
+const testDataSourceInvalidResolver = `
+data "extip" "fail_compilation_unknown_key" {
+	resolver = "not-a-valid-url"
+}
+`
+
+func TestDataSource_compileInvalidResolver(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		Providers: testProviders,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config:      testDataSourceInvalidResolver,
+				ExpectError: regexp.MustCompile("config is invalid: expected \"resolver\" to have a host, got not-a-valid-url"),
+			},
+		},
+	})
+}
+
 type TestHTTPMock struct {
 	server *httptest.Server
 }

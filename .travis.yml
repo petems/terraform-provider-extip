@@ -5,10 +5,14 @@ go:
 - "1.14"
 - master
 
+before_script:
+  - curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.31.0
+
 script:
 - make test
 - make fmtcheck
 - make vet
+- make lint
 
 matrix:
   fast_finish: true

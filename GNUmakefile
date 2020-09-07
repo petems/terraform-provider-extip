@@ -31,6 +31,9 @@ vet:
 		exit 1; \
 	fi
 
+lint:
+	@golangci-lint run ./...
+
 fmt:
 	gofmt -w $(GOFMT_FILES)
 

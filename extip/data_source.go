@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 )
 
 func dataSource() *schema.Resource {
@@ -30,6 +31,7 @@ func dataSource() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				ValidateFunc: validation.IsURLWithHTTPorHTTPS,
 			},
 		},
 	}

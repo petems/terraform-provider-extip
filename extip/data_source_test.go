@@ -150,3 +150,24 @@ func TestDataSource_DefaultResolver(t *testing.T) {
 		},
 	})
 }
+
+const testDataSourceNonExistant = `
+data "extip" "not_real" {
+	resolver = "https://notrealsite.fakeurl"
+}
+output "ipaddress" {
+  value = data.extip.not_real.ipaddress
+}
+`
+
+func TestDataSource_NonExistant(t *testing.T) {
+	resource.UnitTest(t, resource.TestCase{
+		Providers: testProviders,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config:      testDataSourceNonExistant,
+				ExpectError: regexp.MustCompile("Error requesting external IP: Get \"https://notrealsite.fakeurl\": dial tcp: lookup notrealsite.fakeurl.+no such host"),
+			},
+		},
+	})
+}

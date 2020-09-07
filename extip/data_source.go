@@ -33,12 +33,26 @@ func dataSource() *schema.Resource {
 				},
 				ValidateFunc: validation.IsURLWithHTTPorHTTPS,
 			},
+			"client_timeout": &schema.Schema{
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     1000,
+				Description: "The time to wait for a response in ms\nIf not set, defaults to 1000 (1 second). Setting to 0 means infinite (no timeout)",
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
+			},
 		},
 	}
 }
 
-func getExternalIPFrom(service string) (string, error) {
-	rsp, err := http.Get(service)
+func getExternalIPFrom(service string, clientTimeout int) (string, error) {
+
+	var netClient = &http.Client{
+		Timeout: time.Duration(clientTimeout) * time.Millisecond,
+	}
+
+	rsp, err := netClient.Get(service)
 	if err != nil {
 		return "", err
 	}
@@ -61,7 +75,9 @@ func dataSourceRead(d *schema.ResourceData, meta interface{}) error {
 
 	resolver := d.Get("resolver").(string)
 
-	ip, err := getExternalIPFrom(resolver)
+	clientTimeout := d.Get("client_timeout").(int)
+
+	ip, err := getExternalIPFrom(resolver, clientTimeout)
 
 	if err == nil {
 		d.Set("ipaddress", string(ip))

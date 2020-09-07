@@ -65,7 +65,7 @@ func dataSourceRead(d *schema.ResourceData, meta interface{}) error {
 		d.Set("ipaddress", string(ip))
 		d.SetId(time.Now().UTC().String())
 	} else {
-		return fmt.Errorf("Error requesting external IP: %d", err)
+		return fmt.Errorf("Error requesting external IP: %s", err.Error())
 	}
 
 	return nil

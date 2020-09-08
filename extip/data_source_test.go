@@ -13,40 +13,34 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
-const testDataSourceUnknownKeyError = `
-data "extip" "fail_compilation_unknown_key" {
-	this_doesnt_exist = "foo"
+const testDataSourceParameterValue = `
+data "extip" "parameter_tests" {
+	%s = "%s"
 }
 `
 
-func TestDataSource_compileUnknownKeyError(t *testing.T) {
-	resource.UnitTest(t, resource.TestCase{
-		Providers: testProviders,
-		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config:      testDataSourceUnknownKeyError,
-				ExpectError: regexp.MustCompile("An argument named \"this_doesnt_exist\" is not expected here."),
-			},
-		},
-	})
+var parametertests = []struct {
+	parameter  string
+	value      string
+	errorRegex string
+}{
+	{"this_doesnt_exist", "foo", "An argument named \"this_doesnt_exist\" is not expected here."},
+	{"resolver", "not-a-valid-url", "config is invalid: expected \"resolver\" to have a host, got not-a-valid-url"},
+	{"resolver", "https://notrealsite.fakeurl", "Error requesting external IP: Get \"https://notrealsite.fakeurl\": dial tcp: lookup notrealsite.fakeurl.+no such host"},
 }
 
-const testDataSourceInvalidResolver = `
-data "extip" "fail_compilation_unknown_key" {
-	resolver = "not-a-valid-url"
-}
-`
-
-func TestDataSource_compileInvalidResolver(t *testing.T) {
-	resource.UnitTest(t, resource.TestCase{
-		Providers: testProviders,
-		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config:      testDataSourceInvalidResolver,
-				ExpectError: regexp.MustCompile("config is invalid: expected \"resolver\" to have a host, got not-a-valid-url"),
+func TestParameterErrors(t *testing.T) {
+	for _, tt := range parametertests {
+		resource.UnitTest(t, resource.TestCase{
+			Providers: testProviders,
+			Steps: []resource.TestStep{
+				resource.TestStep{
+					Config:      fmt.Sprintf(testDataSourceParameterValue, tt.parameter, tt.value),
+					ExpectError: regexp.MustCompile(tt.errorRegex),
+				},
 			},
-		},
-	})
+		})
+	}
 }
 
 type TestHTTPMock struct {
@@ -114,6 +108,23 @@ func TestDataSource_http404(t *testing.T) {
 			resource.TestStep{
 				Config:      fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.server.URL, "404"),
 				ExpectError: regexp.MustCompile("HTTP request error. Response code: 404"),
+			},
+		},
+	})
+}
+
+func TestDataSource_ErrorReadingBody(t *testing.T) {
+	bodyErrorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1")
+	}))
+	defer bodyErrorServer.Close()
+
+	resource.UnitTest(t, resource.TestCase{
+		Providers: testProviders,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config:      fmt.Sprintf(testDataSourceConfigBasic, bodyErrorServer.URL, "invalid"),
+				ExpectError: regexp.MustCompile("unexpected EOF"),
 			},
 		},
 	})
@@ -259,27 +270,6 @@ func TestDataSource_DefaultResolver(t *testing.T) {
 
 					return nil
 				},
-			},
-		},
-	})
-}
-
-const testDataSourceNonExistant = `
-data "extip" "not_real" {
-	resolver = "https://notrealsite.fakeurl"
-}
-output "ipaddress" {
-  value = data.extip.not_real.ipaddress
-}
-`
-
-func TestDataSource_NonExistant(t *testing.T) {
-	resource.UnitTest(t, resource.TestCase{
-		Providers: testProviders,
-		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config:      testDataSourceNonExistant,
-				ExpectError: regexp.MustCompile("Error requesting external IP: Get \"https://notrealsite.fakeurl\": dial tcp: lookup notrealsite.fakeurl.+no such host"),
 			},
 		},
 	})

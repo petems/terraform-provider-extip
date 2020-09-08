@@ -113,6 +113,23 @@ func TestDataSource_http404(t *testing.T) {
 	})
 }
 
+func TestDataSource_ErrorReadingBody(t *testing.T) {
+	bodyErrorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1")
+	}))
+	defer bodyErrorServer.Close()
+
+	resource.UnitTest(t, resource.TestCase{
+		Providers: testProviders,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config:      fmt.Sprintf(testDataSourceConfigBasic, bodyErrorServer.URL, "invalid"),
+				ExpectError: regexp.MustCompile("unexpected EOF"),
+			},
+		},
+	})
+}
+
 func TestDataSource_defaultTimeout(t *testing.T) {
 	TestHTTPMock := setUpMockHTTPServer()
 

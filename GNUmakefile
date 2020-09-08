@@ -1,6 +1,7 @@
 TEST?=$$(go list ./... |grep -v 'vendor')
 GOFMT_FILES?=$$(find . -name '*.go' |grep -v vendor)
 TARGETS=darwin linux windows
+TESTARGS?=-race -coverprofile=profile.out -covermode=atomic
 
 default: build
 
@@ -49,5 +50,9 @@ test-compile:
 		exit 1; \
 	fi
 	go test -c $(TEST) $(TESTARGS)
+
+.PHONY: cover_html
+cover_html: test ## Runs go test with coverage
+	@go tool cover -html=profile.out
 
 .PHONY: build test testacc vet fmt fmtcheck errcheck vendor-status test-compile

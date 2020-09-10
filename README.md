@@ -1,6 +1,6 @@
 # terraform-provider-extip
 
-[![Build Status](https://travis-ci.org/petems/terraform-provider-extip.svg?branch=master)](https://travis-ci.org/petems/terraform-provider-extip)
+[![Build Status](https://travis-ci.org/petems/terraform-provider-extip.svg?branch=master)](https://travis-ci.org/petems/terraform-provider-extip)[![Coverage Status](https://coveralls.io/repos/github/petems/terraform-provider-extip/badge.svg?branch=add_coveralls_action)](https://coveralls.io/github/petems/terraform-provider-extip?branch=add_coveralls_action)
 
 Terraform provider for getting your current external IP as a data source.
 

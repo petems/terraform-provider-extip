@@ -26,7 +26,7 @@ var parametertests = []struct {
 }{
 	{"this_doesnt_exist", "foo", "An argument named \"this_doesnt_exist\" is not expected here."},
 	{"resolver", "not-a-valid-url", "config is invalid: expected \"resolver\" to have a host, got not-a-valid-url"},
-	{"resolver", "https://notrealsite.fakeurl", "Error requesting external IP: Get \"https://notrealsite.fakeurl\": dial tcp: lookup notrealsite.fakeurl.+no such host"},
+	{"resolver", "https://notrealsite.fakeurl", "lookup notrealsite.fakeurl.+no such host"},
 }
 
 func TestParameterErrors(t *testing.T) {
@@ -140,7 +140,7 @@ func TestDataSource_defaultTimeout(t *testing.T) {
 		Steps: []resource.TestStep{
 			resource.TestStep{
 				Config:      fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.server.URL, "timeout"),
-				ExpectError: regexp.MustCompile("context deadline exceeded"),
+				ExpectError: regexp.MustCompile("Client.Timeout exceeded while awaiting headers"),
 			},
 		},
 	})

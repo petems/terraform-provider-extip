@@ -15,7 +15,7 @@ import (
 
 const testDataSourceParameterValue = `
 data "extip" "parameter_tests" {
-	%s = "%s"
+  %s = "%s"
 }
 `
 
@@ -43,10 +43,6 @@ func TestParameterErrors(t *testing.T) {
 	}
 }
 
-type TestHTTPMock struct {
-	server *httptest.Server
-}
-
 const testDataSourceConfigBasic = `
 data "extip" "http_test" {
   resolver = "%s/meta_%s.txt"
@@ -56,161 +52,228 @@ output "ipaddress" {
 }
 `
 
+var mockedtestserrors = []struct {
+	path       string
+	errorRegex string
+}{
+	{"404", "HTTP request error. Response code: 404"},
+	{"timeout", "context deadline exceeded"},
+	{"hijack", "transport connection broken|unexpected EOF"},
+	{"body_error", "unexpected EOF"},
+}
+
+func TestMockedResponsesErrors(t *testing.T) {
+
+	for _, tt := range mockedtestserrors {
+		var TestHTTPMock *httptest.Server
+		if tt.path == "body_error" {
+			// For some reason I cant get this to work as a specific path, so creating a different server for it
+			TestHTTPMock = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Length", "1")
+			}))
+			defer TestHTTPMock.Close()
+		} else {
+			TestHTTPMock = setUpMockHTTPServer()
+			defer TestHTTPMock.Close()
+		}
+		resource.UnitTest(t, resource.TestCase{
+			Providers: testProviders,
+			Steps: []resource.TestStep{
+				resource.TestStep{
+					Config:      fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.URL, tt.path),
+					ExpectError: regexp.MustCompile(tt.errorRegex),
+				},
+			},
+		})
+	}
+}
+
+var mockedtestssuccess = []struct {
+	path string
+}{
+	{"200"},
+}
+
+func TestMockedResponsesSuccess(t *testing.T) {
+	TestHTTPMock := setUpMockHTTPServer()
+
+	defer TestHTTPMock.Close()
+
+	for _, tt := range mockedtestssuccess {
+		resource.UnitTest(t, resource.TestCase{
+			Providers: testProviders,
+			Steps: []resource.TestStep{
+				resource.TestStep{
+					Config: fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.URL, tt.path),
+					Check: func(s *terraform.State) error {
+						_, ok := s.RootModule().Resources["data.extip.http_test"]
+						if !ok {
+							return fmt.Errorf("missing data resource")
+						}
+
+						outputs := s.RootModule().Outputs
+
+						if outputs["ipaddress"].Value != "127.0.0.1" {
+							return fmt.Errorf(
+								`'ipaddress' output is %s; want '127.0.0.1'`,
+								outputs["ipaddress"].Value,
+							)
+						}
+
+						return nil
+					},
+				},
+			},
+		})
+	}
+}
+
 const testDataSourceConfigTimeout = `
-data "extip" "http_test" {
-	resolver = "%s/meta_%s.txt"
-	client_timeout  = "%s"
+data "extip" "timeout_tests" {
+  resolver 			 = "%s/meta_%s.txt"
+  client_timeout = %s
 }
 output "ipaddress" {
-  value = data.extip.http_test.ipaddress
+  value = data.extip.timeout_tests.ipaddress
 }
 `
 
-func TestDataSource_http200(t *testing.T) {
+var timeouttests = []struct {
+	path          string
+	clienttimeout string
+}{
+	{"timeout", "3000"},
+	{"timeout", "0"},
+}
+
+func TestTimeouts(t *testing.T) {
 	TestHTTPMock := setUpMockHTTPServer()
 
-	defer TestHTTPMock.server.Close()
+	defer TestHTTPMock.Close()
 
-	resource.UnitTest(t, resource.TestCase{
-		Providers: testProviders,
-		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config: fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.server.URL, "200"),
-				Check: func(s *terraform.State) error {
-					_, ok := s.RootModule().Resources["data.extip.http_test"]
-					if !ok {
-						return fmt.Errorf("missing data resource")
-					}
+	for _, tt := range timeouttests {
+		resource.UnitTest(t, resource.TestCase{
+			Providers: testProviders,
+			Steps: []resource.TestStep{
+				resource.TestStep{
+					Config: fmt.Sprintf(testDataSourceConfigTimeout, TestHTTPMock.URL, tt.path, tt.clienttimeout),
+					Check: func(s *terraform.State) error {
+						_, ok := s.RootModule().Resources["data.extip.timeout_tests"]
+						if !ok {
+							return fmt.Errorf("missing data resource")
+						}
 
-					outputs := s.RootModule().Outputs
+						outputs := s.RootModule().Outputs
 
-					if outputs["ipaddress"].Value != "127.0.0.1" {
-						return fmt.Errorf(
-							`'ipaddress' output is %s; want '127.0.0.1'`,
-							outputs["ipaddress"].Value,
-						)
-					}
+						if outputs["ipaddress"].Value != "127.0.0.1" {
+							return fmt.Errorf(
+								`'ipaddress' output is %s; want '127.0.0.1'`,
+								outputs["ipaddress"].Value,
+							)
+						}
 
-					return nil
+						return nil
+					},
 				},
 			},
-		},
-	})
+		})
+	}
 }
-func TestDataSource_http404(t *testing.T) {
+
+var timeouttesterror = []struct {
+	path          string
+	clienttimeout string
+	errorRegex    string
+}{
+	{"timeout", "100", "Timeout exceeded while awaiting headers"},
+}
+
+func TestTimeoutErrors(t *testing.T) {
 	TestHTTPMock := setUpMockHTTPServer()
 
-	defer TestHTTPMock.server.Close()
+	defer TestHTTPMock.Close()
 
-	resource.UnitTest(t, resource.TestCase{
-		Providers: testProviders,
-		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config:      fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.server.URL, "404"),
-				ExpectError: regexp.MustCompile("HTTP request error. Response code: 404"),
-			},
-		},
-	})
-}
-
-func TestDataSource_ErrorReadingBody(t *testing.T) {
-	bodyErrorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Length", "1")
-	}))
-	defer bodyErrorServer.Close()
-
-	resource.UnitTest(t, resource.TestCase{
-		Providers: testProviders,
-		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config:      fmt.Sprintf(testDataSourceConfigBasic, bodyErrorServer.URL, "invalid"),
-				ExpectError: regexp.MustCompile("unexpected EOF"),
-			},
-		},
-	})
-}
-
-func TestDataSource_defaultTimeout(t *testing.T) {
-	TestHTTPMock := setUpMockHTTPServer()
-
-	defer TestHTTPMock.server.Close()
-
-	resource.UnitTest(t, resource.TestCase{
-		Providers: testProviders,
-		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config:      fmt.Sprintf(testDataSourceConfigBasic, TestHTTPMock.server.URL, "timeout"),
-				ExpectError: regexp.MustCompile("Client.Timeout exceeded while awaiting headers"),
-			},
-		},
-	})
-}
-
-func TestDataSource_2SecTimeout(t *testing.T) {
-	TestHTTPMock := setUpMockHTTPServer()
-
-	defer TestHTTPMock.server.Close()
-
-	resource.UnitTest(t, resource.TestCase{
-		Providers: testProviders,
-		Steps: []resource.TestStep{
-			resource.TestStep{
-				Config: fmt.Sprintf(testDataSourceConfigTimeout, TestHTTPMock.server.URL, "200", "3000"),
-				Check: func(s *terraform.State) error {
-					_, ok := s.RootModule().Resources["data.extip.http_test"]
-					if !ok {
-						return fmt.Errorf("missing data resource")
-					}
-
-					outputs := s.RootModule().Outputs
-
-					if outputs["ipaddress"].Value != "127.0.0.1" {
-						return fmt.Errorf(
-							`'ipaddress' output is %s; want '127.0.0.1'`,
-							outputs["ipaddress"].Value,
-						)
-					}
-
-					return nil
+	for _, tt := range timeouttesterror {
+		resource.UnitTest(t, resource.TestCase{
+			Providers: testProviders,
+			Steps: []resource.TestStep{
+				resource.TestStep{
+					Config:      fmt.Sprintf(testDataSourceConfigTimeout, TestHTTPMock.URL, tt.path, tt.clienttimeout),
+					ExpectError: regexp.MustCompile(tt.errorRegex),
 				},
 			},
-		},
-	})
+		})
+	}
 }
 
-func TestDataSource_Set0Timeout(t *testing.T) {
+const testDataSourceConfigValidate = `
+data "extip" "validate_ip_test" {
+	resolver = "%s/meta_%s.txt"
+	validate_ip  = "%s"
+}
+output "ipaddress" {
+  value = data.extip.validate_ip_test.ipaddress
+}
+`
+
+func TestDataSource_validate_on_invalid_ip(t *testing.T) {
 	TestHTTPMock := setUpMockHTTPServer()
 
-	defer TestHTTPMock.server.Close()
+	defer TestHTTPMock.Close()
 
 	resource.UnitTest(t, resource.TestCase{
 		Providers: testProviders,
 		Steps: []resource.TestStep{
 			resource.TestStep{
-				Config: fmt.Sprintf(testDataSourceConfigTimeout, TestHTTPMock.server.URL, "200", "0"),
-				Check: func(s *terraform.State) error {
-					_, ok := s.RootModule().Resources["data.extip.http_test"]
-					if !ok {
-						return fmt.Errorf("missing data resource")
-					}
-
-					outputs := s.RootModule().Outputs
-
-					if outputs["ipaddress"].Value != "127.0.0.1" {
-						return fmt.Errorf(
-							`'ipaddress' output is %s; want '127.0.0.1'`,
-							outputs["ipaddress"].Value,
-						)
-					}
-
-					return nil
-				},
+				Config:      fmt.Sprintf(testDataSourceConfigValidate, TestHTTPMock.URL, "non_ip", "true"),
+				ExpectError: regexp.MustCompile("validate_ip was set to true, and information from resolver was not valid IP: HELLO!"),
 			},
 		},
 	})
 }
 
-func setUpMockHTTPServer() *TestHTTPMock {
+var validatetests = []struct {
+	path       string
+	validateip string
+}{
+	{"non_ip", "false"},
+}
+
+func TestDataSource_validate_off_invalid_ip(t *testing.T) {
+	TestHTTPMock := setUpMockHTTPServer()
+
+	defer TestHTTPMock.Close()
+
+	for _, tt := range validatetests {
+		resource.UnitTest(t, resource.TestCase{
+			Providers: testProviders,
+			Steps: []resource.TestStep{
+				resource.TestStep{
+					Config: fmt.Sprintf(testDataSourceConfigValidate, TestHTTPMock.URL, tt.path, tt.validateip),
+					Check: func(s *terraform.State) error {
+						_, ok := s.RootModule().Resources["data.extip.validate_ip_test"]
+						if !ok {
+							return fmt.Errorf("missing data resource")
+						}
+
+						outputs := s.RootModule().Outputs
+
+						if outputs["ipaddress"].Value != "HELLO!" {
+							return fmt.Errorf(
+								`'ipaddress' output is %s; want 'HELLO'`,
+								outputs["ipaddress"].Value,
+							)
+						}
+
+						return nil
+					},
+				},
+			},
+		})
+	}
+}
+
+func setUpMockHTTPServer() *httptest.Server {
 	Server := httptest.NewServer(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
@@ -220,19 +283,26 @@ func setUpMockHTTPServer() *TestHTTPMock {
 				w.Write([]byte("127.0.0.1"))
 			} else if r.URL.Path == "/meta_404.txt" {
 				w.WriteHeader(http.StatusNotFound)
+			} else if r.URL.Path == "/meta_hijack.txt" {
+				w.WriteHeader(100)
+				w.Write([]byte("Hello3"))
+				hj, _ := w.(http.Hijacker)
+				conn, _, _ := hj.Hijack()
+				conn.Close()
 			} else if r.URL.Path == "/meta_timeout.txt" {
 				time.Sleep(2000 * time.Millisecond)
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("127.0.0.1"))
+			} else if r.URL.Path == "/meta_non_ip.txt" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("HELLO!"))
 			} else {
 				w.WriteHeader(http.StatusNotFound)
 			}
 		}),
 	)
 
-	return &TestHTTPMock{
-		server: Server,
-	}
+	return Server
 }
 
 const testDataSourceConfigReal = `

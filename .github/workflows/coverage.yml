@@ -1,0 +1,27 @@
+on: [push, pull_request]
+name: test and build
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      if: success()
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14.x
+    - name: Checkout code
+      uses: actions/checkout@v1
+    - name: Calc coverage 
+      run: |
+        export PATH=$PATH:$(go env GOPATH)/bin   
+        echo $(go list ./... |grep -v 'vendor') | xargs -t -n4 go test -race -coverprofile=coverage.out -covermode=atomic -timeout=30s -parallel=4
+    - name: Convert coverage to lcov
+      uses: jandelgado/gcov2lcov-action@v1.0.0
+      with:
+          infile: coverage.out
+          outfile: coverage.lcov
+    - name: Coveralls
+      uses: coverallsapp/github-action@v1.0.1
+      with:
+          github-token: ${{ secrets.github_token }}
+          path-to-lcov: coverage.lcov

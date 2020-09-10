@@ -12,7 +12,8 @@ Terraform provider for getting your current external IP as a data source.
 Follow the instructions to [install it as a plugin](https://www.terraform.io/docs/plugins/basics.html#installing-a-plugin). After placing it into your plugins directory, run `terraform init` to initialize it.
 
 ## Usage
-```
+
+```hcl
 data "extip" "external_ip" {
 }
 
@@ -23,7 +24,7 @@ output "external_ip" {
 ```
 
 Gives the result:
-```
+```hcl
 data.extip.external_ip: Refreshing state...
 
 Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
@@ -35,7 +36,7 @@ external_ip = 238.209.109.16
 
 You can also specify what resolver you want to use to get the URL:
 
-```
+```hcl
 data "extip" "external_ip_from_aws" {
   resolver = "https://checkip.amazonaws.com/"
 }
@@ -71,10 +72,11 @@ make build
 
 ## TODO
 
-* Add configuration of the consensus timing (ie. how long it will wait to resolve)
-* Add option of getting ipv6 or ipv4 ipaddress
+* ~~Add configuration of the consensus timing (ie. how long it will wait to resolve)~~ #5
+* ~~Add option of getting ipv6 or ipv4 ipaddress~~ Validate if returned address is a valid IP #10
 
 ## Contributing
-* Install project dependencies: `go get github.com/kardianos/govendor`
+* Write code
 * Run tests: `make test`
-* Build the binary: `make build`
+* Build the binary: `make build`\
+* Open a pull-request

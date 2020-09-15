@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"time"
 
@@ -42,6 +43,14 @@ func dataSource() *schema.Resource {
 					Type: schema.TypeInt,
 				},
 			},
+			"validate_ip": &schema.Schema{
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Description: "Validate if the returned response is a valid ip address",
+				Elem: &schema.Schema{
+					Type: schema.TypeBool,
+				},
+			},
 		},
 	}
 }
@@ -78,6 +87,15 @@ func dataSourceRead(d *schema.ResourceData, meta interface{}) error {
 	clientTimeout := d.Get("client_timeout").(int)
 
 	ip, err := getExternalIPFrom(resolver, clientTimeout)
+
+	if v, ok := d.GetOkExists("validate_ip"); ok {
+		if v.(bool) {
+			ipParse := net.ParseIP(ip)
+			if ipParse == nil {
+				return fmt.Errorf("validate_ip was set to true, and information from resolver was not valid IP: %s", ip)
+			}
+		}
+	}
 
 	if err == nil {
 		d.Set("ipaddress", string(ip))

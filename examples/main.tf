@@ -1,3 +1,12 @@
+terraform {
+  required_providers {
+    extip = {
+      source = "petems/extip"
+      version = "0.1.0"
+    }
+  }
+}
+
 data "extip" "external_ip" {
 }
 

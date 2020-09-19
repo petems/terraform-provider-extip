@@ -7,7 +7,7 @@ description: |-
 
 # Data Source `extip`
 
-The `extip` reads an IP address from an external resolver
+The `extip` data source returns an IP address from an external resolver
 
 ## Example Usage
 
@@ -26,10 +26,10 @@ output "check_external_ip" {
 
 ### Optional
 
--- **resolver** (String, Optional) The address to use as a resolver. Defaults to `https://checkip.amazonaws.com/`
--- **client_timeout** (Integer, Optional) The time to wait for a response in ms. If not set, defaults to `1000` (1 second). Setting to `0` means infinite (no timeout)
--- **validate_ip** - (Boolean, Optional) Validates if the returned response is a valid ip address
+- `resolver` (String, Optional) The address to use as a resolver. Defaults to `https://checkip.amazonaws.com/`
+- `client_timeout` (Integer, Optional) The time to wait for a response in ms. If not set, defaults to `1000` (1 second). Setting to `0` means infinite (no timeout)
+- `validate_ip` - (Boolean, Optional) Validates if the returned response is a valid ip address
 
 ### Read-only
 
--- **ipaddress** The IP address returned from the resolver
+- `ipaddress` The IP address returned from the resolver

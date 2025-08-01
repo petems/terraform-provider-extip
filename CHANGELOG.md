@@ -1,3 +1,18 @@
+# [0.2.0](https://github.com/petems/terraform-provider-extip/compare/v0.1.2...v0.2.0) (2025-08-01)
+
+
+### Bug Fixes
+
+* resolve GitHub Actions workflow failures ([fa3edbc](https://github.com/petems/terraform-provider-extip/commit/fa3edbc292ed3183df8eec2c26ad36cd7bc4ba15))
+* resolve TruffleHog and semantic release workflow issues ([ab3daa7](https://github.com/petems/terraform-provider-extip/commit/ab3daa7a288bedce74c67b9dd81a3ca0df9a0b12))
+
+
+### Features
+
+* implement comprehensive DevOps workflows and fix GitHub Actions ([b9523fd](https://github.com/petems/terraform-provider-extip/commit/b9523fdb6ad67f2fba36e82d94686cf8256b41b9))
+* make release workflow automatic on tag push ([b15443f](https://github.com/petems/terraform-provider-extip/commit/b15443fb040daf00bd3377bba09063d36854e6a4))
+* upgrade to Terraform Plugin SDK v2 and optimize performance ([#16](https://github.com/petems/terraform-provider-extip/issues/16)) ([afcdf7e](https://github.com/petems/terraform-provider-extip/commit/afcdf7eecfc81d6467947e1497a21b327d693cf1))
+
 # Changelog
 
 ## [v0.1.0](https://github.com/petems/terraform-provider-extip/tree/v0.1.0) (2020-09-15)

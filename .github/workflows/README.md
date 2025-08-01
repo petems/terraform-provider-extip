@@ -30,14 +30,7 @@ This directory contains the GitHub Actions workflows for the terraform-provider-
 
 ### 🔄 Maintenance Workflows
 
-#### `dependencies.yml` - Dependency Management
-- **Triggers**: Weekly schedule (Sundays 2 AM UTC), Manual trigger, go.mod/go.sum changes
-- **Purpose**: Automated dependency updates and security scanning
-- **Features**:
-  - Automated Go module updates
-  - Security vulnerability scanning
-  - Automated PR creation for updates
-  - Basic test validation before PR creation
+*Note: Dependency management is handled by Dependabot (configured separately)*
 
 ### 📚 Quality Assurance Workflows
 
@@ -72,9 +65,6 @@ This directory contains the GitHub Actions workflows for the terraform-provider-
 
 ### Manual Triggers
 ```bash
-# Trigger dependency updates
-gh workflow run dependencies.yml
-
 # Trigger full test suite
 gh workflow run ci.yml
 ```
@@ -133,9 +123,9 @@ Recommended branch protection rules:
    - Review gosec and govulncheck reports
    - Address high/critical vulnerabilities
 
-3. **Dependency update failures**
+3. **Dependabot PR failures**
+   - Review automated dependency update PRs
    - Check for breaking changes in dependencies
-   - Review compatibility with Go version
 
 ### Debugging
 - Enable debug logging in workflows

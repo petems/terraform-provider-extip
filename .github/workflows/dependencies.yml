@@ -160,7 +160,7 @@ jobs:
 
       - name: Run dependency audit
         run: |
-          go list -m all > deps.txt
+          go list -mod=readonly -m all > deps.txt
           echo "Dependencies listed in deps.txt"
           cat deps.txt
 

@@ -18,7 +18,8 @@
       "Bash(make lint:*)",
       "Bash(golangci-lint:*)",
       "Bash(git rev-list:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(gh workflow:*)"
     ],
     "deny": []
   }

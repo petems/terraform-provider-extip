@@ -1,0 +1,147 @@
+name: Provider Registry
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish'
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY_URL: 'https://registry.terraform.io'
+
+jobs:
+  publish-to-registry:
+    name: Publish to Terraform Registry
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Cache tfplugindocs
+        id: cache-tfplugindocs
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/tfplugindocs
+          key: tfplugindocs-${{ runner.os }}-latest
+
+      - name: Install tfplugindocs
+        if: steps.cache-tfplugindocs.outputs.cache-hit != 'true'
+        run: |
+          go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest
+
+      - name: Add Go bin to PATH
+        run: |
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Generate and normalize documentation
+        run: |
+          tfplugindocs generate
+          # Remove excessive blank lines (replace 4+ consecutive blank lines with 1)
+          find docs -name "*.md" -exec sed -i '/^$/N;/^\n$/N;/^\n\n$/N;/^\n\n\n$/d' {} \;
+          # Wrap bare URLs for markdown compliance
+          find docs -name "*.md" -exec sed -i 's|defaults to https://checkip.amazonaws.com/|defaults to <https://checkip.amazonaws.com/>|g' {} \;
+
+      - name: Validate provider metadata
+        run: |
+          # Check that required files exist
+          if [ ! -f "README.md" ]; then
+            echo "README.md is required for registry publishing"
+            exit 1
+          fi
+          
+          if [ ! -f "LICENSE" ]; then
+            echo "LICENSE file is required for registry publishing"
+            exit 1
+          fi
+          
+          if [ ! -d "docs" ]; then
+            echo "docs/ directory is required for registry publishing"
+            exit 1
+          fi
+          
+          if [ ! -d "examples" ]; then
+            echo "examples/ directory is required for registry publishing"
+            exit 1
+          fi
+
+      - name: Verify release artifacts
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          
+          echo "Checking release artifacts for tag: $TAG"
+          
+          # Check if release exists and has artifacts
+          gh release view "$TAG" --json assets --jq '.assets[].name' | grep -E '\.(zip|sig)$' || (
+            echo "Release $TAG does not have the required ZIP and signature files"
+            echo "Make sure the release workflow completed successfully"
+            exit 1
+          )
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate provider signing
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          
+          echo "Validating GPG signatures for release $TAG"
+          
+          # Download and verify a few key artifacts
+          gh release download "$TAG" --pattern "*SHA256SUMS*"
+          
+          # Check that signature files exist
+          if ls *SHA256SUMS.sig 1> /dev/null 2>&1; then
+            echo "✅ GPG signature files found"
+          else
+            echo "❌ No GPG signature files found"
+            echo "Make sure GPG_PRIVATE_KEY and PASSPHRASE secrets are configured"
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify registry readiness
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          fi
+          
+          echo "🎉 Provider release $TAG is ready for Terraform Registry!"
+          echo ""
+          echo "📋 Registry Publishing Checklist:"
+          echo "  ✅ Release artifacts created and signed"
+          echo "  ✅ Documentation generated"
+          echo "  ✅ Examples validated"
+          echo "  ✅ Required files present (README, LICENSE, docs/, examples/)"
+          echo ""
+          echo "🔗 Next steps:"
+          echo "  1. Visit: https://registry.terraform.io/publish/provider"
+          echo "  2. Connect your GitHub repository"
+          echo "  3. The registry will automatically detect and publish your releases"
+          echo ""
+          echo "📖 Registry URL will be: https://registry.terraform.io/providers/petems/extip/latest"

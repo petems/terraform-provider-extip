@@ -9,39 +9,105 @@
 # You will need to pass the `--batch` flag to `gpg` in your signing step 
 # in `goreleaser` to indicate this is being used in a non-interactive mode.
 #
-name: release
+name: Release
+
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v1.0.0)'
+        required: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  GO_VERSION: '1.23'
+
 jobs:
   goreleaser:
+    name: Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
     steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v2
-      -
-        name: Unshallow
-        run: git fetch --prune --unshallow
-      -
-        name: Set up Go
-        uses: actions/setup-go@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          go-version: 1.14
-      -
-        name: Import GPG key
+          fetch-depth: 0
+
+      - name: Set up Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run tests before release
+        run: |
+          make test-short
+
+      - name: Import GPG key
         id: import_gpg
-        uses: paultyng/ghaction-import-gpg@v2.1.0
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          PASSPHRASE: ${{ secrets.PASSPHRASE }}
-      -
-        name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.PASSPHRASE }}
+
+      - name: Cache GoReleaser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/go-build
+          key: goreleaser-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            goreleaser-${{ runner.os }}-
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v5
         with:
           version: latest
-          args: release --rm-dist
+          args: release --clean --timeout=60m
         env:
           GPG_FINGERPRINT: ${{ steps.import_gpg.outputs.fingerprint }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  validate-release:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate release artifacts
+        run: |
+          echo "✅ Release ${{ github.ref_name }} artifacts created successfully"
+          echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+
+  notify:
+    name: Notify Release
+    runs-on: ubuntu-latest
+    if: always() && startsWith(github.ref, 'refs/tags/v')
+    needs: [goreleaser, validate-release]
+
+    steps:
+      - name: Notify on success
+        if: needs.goreleaser.result == 'success' && needs.validate-release.result == 'success'
+        run: |
+          echo "🎉 Release ${{ github.ref_name }} was successful!"
+          echo "📦 Check the release at: https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+          echo "📝 Release artifacts are signed and ready for use"
+
+      - name: Notify on failure
+        if: needs.goreleaser.result == 'failure' || needs.validate-release.result == 'failure'
+        run: |
+          echo "❌ Release ${{ github.ref_name }} failed!"
+          echo "🔍 Check the workflow logs for details."
+          exit 1

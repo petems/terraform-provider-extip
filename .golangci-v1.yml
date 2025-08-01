@@ -1,0 +1,149 @@
+# golangci-lint configuration for Terraform Provider
+
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - bodyclose
+    - dogsled  
+    - dupl
+    - exhaustive
+    - funlen
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - revive
+    - rowserrcheck
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  disable:
+    - errcheck
+
+linters-settings:
+  dupl:
+    threshold: 100
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: false
+
+  exhaustive:
+    check-generated: false
+    default-signifies-exhaustive: false
+
+  funlen:
+    lines: 70
+    statements: 40
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  gocritic:
+    disabled-checks:
+      - wrapperFunc
+      - dupImport
+      - ifElseChain
+      - unnamedResult
+    enabled-tags:
+      - performance
+      - style
+      - experimental
+      - diagnostic
+
+  gocyclo:
+    min-complexity: 12
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # too strict for Terraform providers
+
+  nakedret:
+    max-func-lines: 15
+
+  revive:
+    confidence: 0.8
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: empty-block
+      - name: error-naming
+      - name: error-return
+      - name: error-strings
+      - name: errorf
+      - name: exported
+      - name: increment-decrement
+      - name: indent-error-flow
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: redefines-builtin-id
+      - name: superfluous-else
+      - name: time-naming
+      - name: unreachable-code
+      - name: unused-parameter
+      - name: var-declaration
+      - name: var-naming
+
+  staticcheck:
+    checks: ["all"]
+
+  unparam:
+    check-exported: false
+
+issues:
+  max-same-issues: 10
+  max-issues-per-linter: 0
+  new: false
+
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - dupl
+        - gosec
+        - funlen
+        - errcheck
+    
+    # Disable errcheck for test files entirely
+    - path: _test\.go
+      text: "Error return value"
+      linters:
+        - errcheck
+
+    # Terraform provider-specific exclusions
+    - linters:
+        - gosec
+      text: "G107:"
+      # Allow HTTP requests in Terraform providers
+    
+    - linters:
+        - gosec  
+      text: "G304:"
+      # Allow file path operations in Terraform providers
+    
+    - linters:
+        - gosec
+      text: "G601:"
+      # Allow implicit memory aliasing in Terraform providers
+
+  exclude-dirs:
+    - vendor
+    - examples

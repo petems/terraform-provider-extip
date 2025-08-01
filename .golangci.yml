@@ -1,0 +1,63 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - dogsled
+    - dupl
+    - goconst
+    - gocritic
+    - gocyclo
+    - gosec
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - whitespace
+    - godot
+    - govet
+    - ineffassign
+    - unused
+
+  settings:
+    dupl:
+      threshold: 100
+    gocyclo:
+      min-complexity: 12
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    nakedret:
+      max-func-lines: 15
+
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - dupl
+          - gosec
+          - funlen
+      - linters:
+          - gosec
+        text: "G107:"
+      - linters:
+          - gosec  
+        text: "G304:"
+      - linters:
+          - gosec
+        text: "G601:"
+
+issues:
+  max-same-issues: 10
+  max-issues-per-linter: 0
+  new: false

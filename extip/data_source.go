@@ -1,30 +1,70 @@
+// Package extip provides a Terraform provider for retrieving external IP addresses.
 package extip
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
+
+// HTTP client cache with timeout-based keys.
+var (
+	httpClients = make(map[time.Duration]*http.Client)
+	clientMutex sync.RWMutex
+)
+
+// getHTTPClient returns an HTTP client with the specified timeout, reusing existing clients.
+func getHTTPClient(timeout time.Duration) *http.Client {
+	clientMutex.RLock()
+	if client, exists := httpClients[timeout]; exists {
+		clientMutex.RUnlock()
+		return client
+	}
+	clientMutex.RUnlock()
+
+	clientMutex.Lock()
+	defer clientMutex.Unlock()
+
+	// Double-check after acquiring write lock
+	if client, exists := httpClients[timeout]; exists {
+		return client
+	}
+
+	client := &http.Client{
+		Timeout: timeout,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
+	httpClients[timeout] = client
+	return client
+}
 
 func dataSource() *schema.Resource {
 	return &schema.Resource{
-		Read: dataSourceRead,
+		ReadContext: dataSourceReadContext,
 
 		Schema: map[string]*schema.Schema{
-			"ipaddress": &schema.Schema{
+			"ipaddress": {
 				Type:     schema.TypeString,
 				Computed: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
 			},
-			"resolver": &schema.Schema{
+			"resolver": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "https://checkip.amazonaws.com/",
@@ -34,7 +74,7 @@ func dataSource() *schema.Resource {
 				},
 				ValidateFunc: validation.IsURLWithHTTPorHTTPS,
 			},
-			"client_timeout": &schema.Schema{
+			"client_timeout": {
 				Type:        schema.TypeInt,
 				Optional:    true,
 				Default:     1000,
@@ -43,7 +83,7 @@ func dataSource() *schema.Resource {
 					Type: schema.TypeInt,
 				},
 			},
-			"validate_ip": &schema.Schema{
+			"validate_ip": {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Description: "Validate if the returned response is a valid ip address",
@@ -56,54 +96,81 @@ func dataSource() *schema.Resource {
 }
 
 func getExternalIPFrom(service string, clientTimeout int) (string, error) {
+	timeout := time.Duration(clientTimeout) * time.Millisecond
+	client := getHTTPClient(timeout)
 
-	var netClient = &http.Client{
-		Timeout: time.Duration(clientTimeout) * time.Millisecond,
+	// Create request with context to satisfy noctx linter
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, service, http.NoBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	rsp, err := netClient.Get(service)
+	rsp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 
-	defer rsp.Body.Close()
+	defer func() {
+		if closeErr := rsp.Body.Close(); closeErr != nil {
+			// Log the error but don't fail the operation
+			_ = closeErr
+		}
+	}()
 
-	if rsp.StatusCode != 200 {
+	if rsp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("HTTP request error. Response code: %d", rsp.StatusCode)
 	}
 
-	buf, err := ioutil.ReadAll(rsp.Body)
+	buf, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return "", err
 	}
 
-	return string(bytes.TrimSpace(buf)), nil
+	// Optimize string conversion by avoiding unnecessary allocations
+	trimmed := bytes.TrimSpace(buf)
+	return string(trimmed), nil
 }
 
-func dataSourceRead(d *schema.ResourceData, meta interface{}) error {
+func dataSourceReadContext(_ context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	err := dataSourceRead(d, meta)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	return nil
+}
 
-	resolver := d.Get("resolver").(string)
+func dataSourceRead(d *schema.ResourceData, _ interface{}) error {
+	resolver, ok := d.Get("resolver").(string)
+	if !ok {
+		return errors.New("resolver is not a string")
+	}
 
-	clientTimeout := d.Get("client_timeout").(int)
+	clientTimeout, ok := d.Get("client_timeout").(int)
+	if !ok {
+		return errors.New("client_timeout is not an int")
+	}
 
 	ip, err := getExternalIPFrom(resolver, clientTimeout)
+	if err != nil {
+		return fmt.Errorf("error requesting external IP: %s", err.Error())
+	}
 
-	if v, ok := d.GetOkExists("validate_ip"); ok {
-		if v.(bool) {
-			ipParse := net.ParseIP(ip)
-			if ipParse == nil {
+	// Only validate IP if the flag is set
+	if v, ok := d.GetOk("validate_ip"); ok {
+		if validateIP, ok := v.(bool); ok && validateIP {
+			if net.ParseIP(ip) == nil {
 				return fmt.Errorf("validate_ip was set to true, and information from resolver was not valid IP: %s", ip)
 			}
 		}
 	}
 
-	if err == nil {
-		d.Set("ipaddress", string(ip))
-		d.SetId(time.Now().UTC().String())
-	} else {
-		return fmt.Errorf("Error requesting external IP: %s", err.Error())
+	// Set the IP address
+	if setErr := d.Set("ipaddress", ip); setErr != nil {
+		return fmt.Errorf("error setting ipaddress: %s", setErr.Error())
 	}
 
-	return nil
+	// Use a more efficient ID generation
+	d.SetId(time.Now().UTC().Format("20060102150405"))
 
+	return nil
 }

@@ -31,3 +31,8 @@ website/vendor
 !command/test-fixtures/**/.terraform/
 profile.out
 coverage.out
+coverage.html
+coverage_detailed.html
+
+# Binary artifacts
+terraform-provider-extip

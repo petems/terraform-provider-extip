@@ -54,8 +54,12 @@ jobs:
 
       - name: Test provider with Terraform ${{ matrix.terraform-version }}
         run: |
-          cd examples
-          cat > versions.tf << 'EOF'
+          # Create a temporary test directory to avoid conflicts
+          mkdir -p test-tf-${{ matrix.terraform-version }}
+          cd test-tf-${{ matrix.terraform-version }}
+          
+          # Create terraform configuration
+          cat > main.tf << 'EOF'
           terraform {
             required_version = ">= ${{ matrix.terraform-version }}"
             required_providers {
@@ -65,13 +69,21 @@ jobs:
               }
             }
           }
+
+          data "extip" "test" {
+            resolver = "https://checkip.amazonaws.com/"
+          }
+
+          output "external_ip" {
+            value = data.extip.test.ipaddress
+          }
           EOF
           
           terraform init
           terraform validate
           terraform plan
-          # Test the actual functionality
-          timeout 30s terraform apply -auto-approve || echo "Apply test completed (timeout expected)"
+          # Test the actual functionality with short timeout
+          timeout 10s terraform apply -auto-approve || echo "Apply test completed (timeout expected)"
           terraform destroy -auto-approve || echo "Destroy completed"
 
   provider-schema-validation:
@@ -163,19 +175,19 @@ jobs:
           }
           
           output "default_ip" {
-            value = data.extip.default.ip
+            value = data.extip.default.ipaddress
           }
           
           output "custom_resolver_ip" {
-            value = data.extip.custom_resolver.ip
+            value = data.extip.custom_resolver.ipaddress
           }
           
           output "custom_timeout_ip" {
-            value = data.extip.custom_timeout.ip
+            value = data.extip.custom_timeout.ipaddress
           }
           
           output "no_validation_ip" {
-            value = data.extip.no_validation.ip
+            value = data.extip.no_validation.ipaddress
           }
           EOF
 

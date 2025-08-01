@@ -1,0 +1,352 @@
+# golangci-lint configuration for Terraform Provider
+# Based on v2.3.0 with Terraform provider specific optimizations
+
+version: "2"
+
+run:
+  issues-exit-code: 1
+  tests: true
+  timeout: 5m
+  go: '1.23'
+
+linters:
+  enable:
+    # Core linters for Terraform providers
+    - bodyclose
+    - depguard
+    - dogsled
+    - dupl
+    - exhaustive
+    - funlen
+    - goconst
+    - gocritic
+    - gocyclo
+    - goprintffuncname
+    - gosec
+    - misspell
+    - mnd
+    - nakedret
+    - noctx
+    - nolintlint
+    - revive
+    - rowserrcheck
+    - staticcheck
+    - unconvert
+    - unparam
+    - whitespace
+    
+    # New useful linters from v2.3.0
+    - asasalint # checks for pass []any as any in variadic func(...any)
+    - copyloopvar # detects places where loop variables are copied (Go 1.22+)
+    - errcheck # checking for unchecked errors
+    - errname # checks that sentinel errors are prefixed with the Err
+    - errorlint # finds code that will cause problems with error wrapping
+    - fatcontext # detects nested contexts in loops
+    - gocheckcompilerdirectives # validates go compiler directive comments
+    - godot # checks if comments end in a period
+    - govet # reports suspicious constructs
+    - ineffassign # detects when assignments to existing variables are not used
+    - loggercheck # checks key value pairs for common logger libraries
+    - makezero # finds slice declarations with non-zero initial length
+    - musttag # enforces field tags in (un)marshaled structs
+    - nestif # reports deeply nested if statements
+    - nilerr # finds the code that returns nil even if it checks that the error is not nil
+    - nilnil # checks that there is no simultaneous return of nil error and an invalid value
+    - nonamedreturns # reports all named returns
+    - nosprintfhostport # checks for misuse of Sprintf to construct a host with port
+    - perfsprint # checks that fmt.Sprintf can be replaced with a faster alternative
+    - predeclared # finds code that shadows one of Go's predeclared identifiers
+    - reassign # checks that package variables are not reassigned
+    - sloglint # ensure consistent code style when using log/slog
+    - sqlclosecheck # checks that sql.Rows and sql.Stmt are closed
+    - testableexamples # checks if examples are testable
+    - testifylint # checks usage of github.com/stretchr/testify
+    - testpackage # makes you use a separate _test package
+    - tparallel # detects inappropriate usage of t.Parallel() method
+    - unused # checks for unused constants, variables, functions and types
+    - usestdlibvars # detects the possibility to use variables/constants from Go stdlib
+    - wastedassign # finds wasted assignment statements
+
+  disable:
+    - gochecknoglobals # Allow global variables (common in Terraform providers)
+    - gochecknoinits # Allow init functions (common in Terraform providers)
+    - lll # Remove line length limit (replaced with golines)
+
+  settings:
+    depguard:
+      rules:
+        main:
+          files:
+            - "main.go"
+            - "extip/**/*.go"
+          allow:
+            - $gostd
+            - github.com/hashicorp/terraform-plugin-sdk/v2
+            - github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema
+            - github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation
+            - github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource
+            - github.com/hashicorp/terraform-plugin-sdk/v2/terraform
+            - github.com/hashicorp/terraform-plugin-sdk/v2/plugin
+            - github.com/petems/terraform-provider-extip/extip
+
+        test:
+          files:
+            - "**/*_test.go"
+          allow:
+            - $gostd
+            - github.com/hashicorp/terraform-plugin-sdk/v2
+            - github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema
+            - github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation
+            - github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource
+            - github.com/hashicorp/terraform-plugin-sdk/v2/terraform
+            - github.com/stretchr/testify
+            - github.com/petems/terraform-provider-extip/extip
+
+    dupl:
+      threshold: 100
+
+    errcheck:
+      # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
+      # Default: false
+      check-type-assertions: true
+      # Report about assignment of errors to blank identifier.
+      # Default: false
+      check-blank: true
+
+    exhaustive:
+      # Program elements to check for exhaustiveness.
+      # Default: [ switch ]
+      check:
+        - switch
+        - map
+
+    funlen:
+      # Checks the number of lines in a function.
+      # Default: 60
+      lines: 70
+      # Checks the number of statements in a function.
+      # Default: 40
+      statements: 40
+
+    goconst:
+      # Minimal string literal length to detect.
+      # Default: 3
+      min-len: 3
+      # Minimal occurrences count for string literal to detect.
+      # Default: 3
+      min-occurrences: 3
+
+    gocritic:
+      # Disable specific checks that are too noisy for Terraform providers
+      disabled-checks:
+        - wrapperFunc
+        - dupImport
+        - ifElseChain
+        - unnamedResult
+      # Enable specific diagnostic tags
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+        - diagnostic
+
+    gocyclo:
+      # Minimal code complexity to report.
+      # Default: 30
+      min-complexity: 12
+
+    govet:
+      # Enable all analyzers.
+      # Default: false
+      enable-all: true
+      # Disable analyzers by name.
+      disable:
+        - fieldalignment # too strict for Terraform providers
+
+    mnd:
+      # List of enabled checks, see https://github.com/tommy-muehle/go-mnd/#checks for description.
+      # Default: ["argument", "case", "condition", "operation", "return", "assign"]
+      checks:
+        - argument
+        - case
+        - condition
+        - operation
+        - return
+        - assign
+      # List of numbers to exclude from analysis.
+      ignored-numbers:
+        - '0'
+        - '1'
+        - '2'
+        - '3'
+        - '10'
+        - '100'
+        - '200'
+        - '400'
+        - '401'
+        - '404'
+        - '500'
+
+    nakedret:
+      # Make an issue if func has more lines of code than this setting, and it has naked returns.
+      # Default: 30
+      max-func-lines: 15
+
+    nestif:
+      # Minimal complexity of if statements to report.
+      # Default: 5
+      min-complexity: 4
+
+    revive:
+      # Minimum confidence interval to report issues.
+      # Default: 0.8
+      confidence: 0.8
+      # Enable all available rules.
+      # Default: false
+      enable-all-rules: false
+      # List of available rules: https://github.com/mgechev/revive/blob/master/RULES_DESCRIPTIONS.md
+      rules:
+        # Disable overly strict rules for Terraform providers
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: exported
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: var-declaration
+        - name: var-naming
+
+    staticcheck:
+      # Enable all checks.
+      # Default: ["*"]
+      checks: ["all"]
+
+    testifylint:
+      # Enable all checkers (https://github.com/Antonboom/testifylint#checkers).
+      # Default: false
+      enable-all: true
+
+    unparam:
+      # Check exported functions.
+      # Default: false
+      check-exported: false
+
+  exclusions:
+    # Exclude generated code from linting
+    generated: lax
+    rules:
+      # Exclude some linters from running on tests files.
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - dupl
+          - gosec
+          - funlen
+          - gocognit
+          - cyclop
+      
+      # Exclude testpackage linter for provider test packages
+      - linters:
+          - testpackage
+        text: "package should be `extip_test` instead of `extip`"
+
+      # Exclude some staticcheck messages
+      - linters:
+          - staticcheck
+        text: "SA9003:"
+
+      # Exclude magic number detection for common HTTP status codes and test values
+      - linters:
+          - mnd
+        text: "Magic number:"
+
+      # Terraform provider-specific exclusions
+      - linters:
+          - gosec
+        text: "G107:"
+        # Allow HTTP requests in Terraform providers
+      
+      - linters:
+          - gosec  
+        text: "G304:"
+        # Allow file path operations in Terraform providers
+      
+      - linters:
+          - gosec
+        text: "G601:"
+        # Allow implicit memory aliasing in Terraform providers
+
+    # Exclude specific paths from linting
+    paths:
+      - vendor$
+      - examples$
+
+issues:
+  # Maximum count of issues with the same text.
+  # Set to 0 to disable.
+  # Default: 3
+  max-same-issues: 10
+  # Maximum count of issues per one linter.
+  # Set to 0 to disable.
+  # Default: 0
+  max-issues-per-linter: 0
+  # Show only new issues: if there are unstaged changes or untracked files,
+  # only those changes are analyzed, e.g. if you have unstaged changes out of 10 files,
+  # only those 10 files will be analyzed. It's a super-fast way to execute golangci-lint
+  # in existing codebase. It's not enabled by default because the full set of issues
+  # should be fixed, and the cache should be warmed up.
+  # Default: false
+  new: false
+
+formatters:
+  enable:
+    - goimports # checks if the code and import statements are formatted according to the 'goimports' command
+    - golines # checks if code is formatted, and fixes long lines
+
+  settings:
+    goimports:
+      # A list of prefixes, which, if set, checks import paths
+      # with the given prefixes are grouped after 3rd-party packages.
+      local-prefixes:
+        - github.com/petems/terraform-provider-extip
+
+    golines:
+      # Target maximum line length.
+      # Default: 100
+      max-len: 120
+
+  exclusions:
+    # Exclude generated code from formatting
+    generated: lax
+    # Exclude specific paths from formatting
+    paths:
+      - vendor$
+      - examples$
+
+output:
+  # Show statistics per linter.
+  # Default: true
+  show-stats: true
+  # Sort results by: file, linter, and severity.
+  # Default: false
+  sort-results: true
+  # Default: ["linter", "file"]
+  sort-order:
+    - linter
+    - severity
+    - file

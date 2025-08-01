@@ -1,0 +1,48 @@
+name: Reusable Setup
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: 'Go version to use'
+        required: false
+        default: '1.23'
+        type: string
+      cache:
+        description: 'Whether to cache Go modules'
+        required: false
+        default: true
+        type: boolean
+      install-deps:
+        description: 'Whether to install dependencies'
+        required: false
+        default: true
+        type: boolean
+    outputs:
+      go-version:
+        description: 'The Go version that was set up'
+        value: ${{ jobs.setup.outputs.go-version }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      go-version: ${{ steps.go-version.outputs.go-version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go ${{ inputs.go-version }}
+        id: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache: ${{ inputs.cache }}
+
+      - name: Install dependencies
+        if: inputs.install-deps
+        run: go mod download
+
+      - name: Set Go version output
+        id: go-version
+        run: echo "go-version=$(go version)" >> $GITHUB_OUTPUT 

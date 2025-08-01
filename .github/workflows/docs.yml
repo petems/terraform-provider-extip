@@ -1,0 +1,122 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - 'examples/**'
+      - '**.md'
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - 'examples/**'
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Cache tfplugindocs
+        id: cache-tfplugindocs
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/tfplugindocs
+          key: tfplugindocs-${{ runner.os }}-latest
+
+      - name: Install tfplugindocs
+        if: steps.cache-tfplugindocs.outputs.cache-hit != 'true'
+        run: |
+          go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest
+
+      - name: Add Go bin to PATH
+        run: |
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Validate documentation format
+        run: |
+          tfplugindocs validate
+
+      - name: Generate and normalize documentation
+        run: |
+          tfplugindocs generate
+          # Remove excessive blank lines (replace 4+ consecutive blank lines with 1)
+          find docs -name "*.md" -exec sed -i '/^$/N;/^\n$/N;/^\n\n$/N;/^\n\n\n$/d' {} \;
+          # Wrap bare URLs for markdown compliance
+          find docs -name "*.md" -exec sed -i 's|defaults to https://checkip.amazonaws.com/|defaults to <https://checkip.amazonaws.com/>|g' {} \;
+      
+      - name: Check for documentation changes
+        run: |
+          git diff --exit-code docs/ || (
+            echo "Documentation is out of sync. Run 'tfplugindocs generate' and commit the changes."
+            exit 1
+          )
+
+  validate-examples:
+    name: Validate Examples
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ~1.0
+          terraform_wrapper: false
+
+      - name: Validate Terraform examples
+        run: |
+          # Check for examples in subdirectories
+          if ls examples/*/ 1> /dev/null 2>&1; then
+            for example in examples/*/; do
+              if [ -d "$example" ]; then
+                echo "Validating $example"
+                cd "$example"
+                terraform init
+                terraform validate
+                cd - > /dev/null
+              fi
+            done
+          fi
+          
+          # Check for examples in root examples directory
+          if [ -f "examples/main.tf" ]; then
+            echo "Validating examples/main.tf"
+            cd examples
+            terraform init
+            terraform validate
+            cd - > /dev/null
+          fi
+
+  lint-markdown:
+    name: Lint Markdown
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Lint Markdown files
+        uses: DavidAnson/markdownlint-cli2-action@v15
+        with:
+          globs: 'docs/**/*.md'
+          # Only lint docs directory for now, skip other markdown files with many issues

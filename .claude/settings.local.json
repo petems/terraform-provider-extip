@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(go test:*)",
+      "Bash(go tool cover:*)",
+      "Bash(make test:*)",
+      "Bash(make fmt:*)",
+      "Bash(find:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(gofmt:*)",
+      "Bash(tfplugindocs generate:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(make lint:*)",
+      "Bash(golangci-lint:*)",
+      "Bash(git rev-list:*)",
+      "Bash(git reset:*)"
+    ],
+    "deny": []
+  }
+}

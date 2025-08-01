@@ -44,7 +44,7 @@ jobs:
         run: |
           # Get current versions
           go list -mod=readonly -m all > current_modules.txt
-          
+
           # Check for updates
           if go list -mod=readonly -u -m all | grep -E '\[.*\]'; then
             echo "Updates available"
@@ -67,7 +67,7 @@ jobs:
           make test-short
 
       - name: Create Pull Request
-        if: steps.check.outputs.has_updates == 'true'
+        if: steps.check.outputs.has_updates == 'true' && github.ref_type == 'branch'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -75,21 +75,22 @@ jobs:
           title: 'chore: update dependencies'
           body: |
             ## Dependency Updates
-            
+
             This PR updates Go dependencies to their latest versions.
-            
+
             ### Changes
             - Updated Go modules to latest compatible versions
             - Ran `go mod tidy` to clean up dependencies
             - Updated vendor directory
             - Verified tests still pass
-            
+
             ### Testing
             - [x] Basic tests pass
             - [ ] Full integration tests pass
             - [ ] Security scan passes
           branch: chore/update-dependencies
           delete-branch: true
+          base: ${{ github.head_ref || github.ref_name }}
 
   security-scan:
     name: Security Scan
@@ -169,7 +170,7 @@ jobs:
           # Ensure govulncheck is available
           export PATH="$HOME/go/bin:$PATH"
           govulncheck -json ./... > vuln-report.json || true
-          
+
           # Check for vulnerabilities
           if [ -s vuln-report.json ] && jq -e '.Vulns[]?' vuln-report.json > /dev/null 2>&1; then
             echo "❌ Vulnerabilities found in dependencies!"
@@ -177,4 +178,4 @@ jobs:
             exit 1
           else
             echo "✅ No known vulnerabilities found in dependencies"
-          fi 
+          fi

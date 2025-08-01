@@ -22,11 +22,18 @@ permissions:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         go-version: [1.22, 1.23, 1.24]
+        os: [ubuntu-latest]
+        include:
+          # Test on additional OS only for latest Go version
+          - go-version: 1.24
+            os: macos-latest
+          - go-version: 1.24
+            os: windows-latest
 
     steps:
       - name: Checkout code
@@ -92,7 +99,8 @@ jobs:
           path: |
             ~/.terraform.d/plugins
             ~/.terraform.d/plugin-cache
-          key: terraform-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-${{ github.run_id }}
+            ~/.cache/terraform
+          key: terraform-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-v2
           restore-keys: |
             terraform-${{ runner.os }}-${{ hashFiles('**/go.sum') }}-
             terraform-${{ runner.os }}-
@@ -261,6 +269,20 @@ jobs:
       - name: Run govulncheck
         run: |
           govulncheck ./...
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: sbom.spdx.json
+          retention-days: 30
 
   validate:
     name: Validate

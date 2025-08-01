@@ -80,4 +80,74 @@ test-compile:
 cover_html: test ## Runs go test with coverage
 	@go tool cover -html=profile.out
 
+# DevOps targets
+.PHONY: ci-setup
+ci-setup: ## Setup CI environment
+	@echo "Setting up CI environment..."
+	@go mod download
+	@go mod verify
+
+.PHONY: security-scan
+security-scan: ## Run security scans
+	@echo "Running security scans..."
+	@if ! command -v gosec >/dev/null 2>&1; then \
+		echo "Installing gosec..."; \
+		go install github.com/securecode/gosec/v2/cmd/gosec@latest; \
+	fi
+	@gosec ./...
+	@if ! command -v govulncheck >/dev/null 2>&1; then \
+		echo "Installing govulncheck..."; \
+		go install golang.org/x/vuln/cmd/govulncheck@latest; \
+	fi
+	@govulncheck ./...
+
+.PHONY: deps-update
+deps-update: ## Update dependencies
+	@echo "Updating dependencies..."
+	@go get -u ./...
+	@go mod tidy
+	@go mod vendor
+
+.PHONY: pre-commit
+pre-commit: fmtcheck vet lint test-short ## Run pre-commit checks
+	@echo "Pre-commit checks passed!"
+
+.PHONY: ci-test
+ci-test: ci-setup pre-commit test ## Full CI test suite
+	@echo "CI tests completed!"
+
+.PHONY: release-build
+release-build: ## Build release binaries
+	@echo "Building release binaries..."
+	@goreleaser build --snapshot --rm-dist
+
+.PHONY: release-dry-run
+release-dry-run: ## Dry run release process
+	@echo "Running release dry run..."
+	@goreleaser release --snapshot --rm-dist --skip-publish
+
+.PHONY: docs-generate
+docs-generate: ## Generate provider documentation
+	@echo "Generating documentation..."
+	@if ! command -v tfplugindocs >/dev/null 2>&1; then \
+		echo "Installing tfplugindocs..."; \
+		go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest; \
+	fi
+	@tfplugindocs generate
+
+.PHONY: docs-validate
+docs-validate: ## Validate provider documentation
+	@echo "Validating documentation..."
+	@if ! command -v tfplugindocs >/dev/null 2>&1; then \
+		echo "Installing tfplugindocs..."; \
+		go install github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs@latest; \
+	fi
+	@tfplugindocs validate
+
+.PHONY: help
+help: ## Show this help message
+	@echo "Available targets:"
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
 .PHONY: build test test-short test-verbose test-verbose-short testacc vet fmt fmtcheck errcheck vendor-status test-compile
+.PHONY: ci-setup security-scan deps-update pre-commit ci-test release-build release-dry-run docs-generate docs-validate help

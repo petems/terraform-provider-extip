@@ -1,0 +1,54 @@
+{
+  "name": "Terraform Provider ExtIP Development",
+  "image": "mcr.microsoft.com/devcontainers/go:1.24",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/terraform:1": {
+      "version": "1.9"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "hashicorp.terraform",
+        "ms-vscode.vscode-json",
+        "redhat.vscode-yaml",
+        "github.vscode-pull-request-github",
+        "streetsidesoftware.code-spell-checker",
+        "ms-vscode.makefile-tools"
+      ],
+      "settings": {
+        "go.toolsManagement.checkForUpdates": "local",
+        "go.useLanguageServer": true,
+        "go.lintOnSave": "package",
+        "go.formatTool": "goimports",
+        "terraform.experimentalFeatures.validateOnSave": true,
+        "terraform.experimentalFeatures.prefillRequiredFields": true
+      }
+    }
+  },
+
+  "onCreateCommand": "bash .devcontainer/setup.sh",
+  
+  "postCreateCommand": [
+    "go mod download",
+    "make ci-setup"
+  ],
+
+  "remoteUser": "vscode",
+  
+  "mounts": [
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+
+  "forwardPorts": [],
+  
+  "containerEnv": {
+    "TF_PLUGIN_CACHE_DIR": "/tmp/.terraform-plugin-cache",
+    "CHECKPOINT_DISABLE": "1"
+  }
+}

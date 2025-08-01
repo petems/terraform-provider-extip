@@ -1,0 +1,77 @@
+# Pre-commit hooks configuration
+# Install with: pip install pre-commit && pre-commit install
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+
+  # Go-specific hooks
+  - repo: local
+    hooks:
+      - id: go-fmt
+        name: go fmt
+        entry: make fmt
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-vet
+        name: go vet
+        entry: make vet
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      - id: golangci-lint
+        name: golangci-lint
+        entry: make lint
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-test-short
+        name: go test (short)
+        entry: make test-short
+        language: system
+        files: \.go$
+        pass_filenames: false
+
+      - id: go-mod-tidy
+        name: go mod tidy
+        entry: sh -c 'go mod tidy && git diff --exit-code go.mod go.sum'
+        language: system
+        files: go\.(mod|sum)$
+        pass_filenames: false
+
+  # Security scanning
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: package.lock.json
+
+  # Documentation
+  - repo: https://github.com/markdownlint/markdownlint
+    rev: v0.12.0
+    hooks:
+      - id: markdownlint
+        files: \.(md|markdown)$
+        args: ['--config', '.markdownlint.yaml']
+
+  # Terraform
+  - repo: https://github.com/antonbabenko/pre-commit-terraform
+    rev: v1.88.0
+    hooks:
+      - id: terraform_fmt
+        files: examples/.*\.tf$
+      - id: terraform_validate
+        files: examples/.*\.tf$

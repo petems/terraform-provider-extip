@@ -43,10 +43,10 @@ jobs:
         id: check
         run: |
           # Get current versions
-          go list -m all > current_modules.txt
+          go list -mod=readonly -m all > current_modules.txt
           
           # Check for updates
-          if go list -u -m all | grep -E '\[.*\]'; then
+          if go list -mod=readonly -u -m all | grep -E '\[.*\]'; then
             echo "Updates available"
             echo "has_updates=true" >> $GITHUB_OUTPUT
           else

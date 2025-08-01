@@ -1,54 +1,99 @@
-# Visit https://goreleaser.com for documentation on how to customize this
-# behavior.
+# GoReleaser configuration for terraform-provider-extip
+# Visit https://goreleaser.com for documentation
+
 before:
   hooks:
-    # this is just an example and not a requirement for provider building/publishing
     - go mod tidy
+    - go mod vendor
+
 builds:
-- env:
-    # goreleaser does not work with CGO, it could also complicate
-    # usage by users in CI/CD systems like Terraform Cloud where
-    # they are unable to install libraries.
-    - CGO_ENABLED=0
-  mod_timestamp: '{{ .CommitTimestamp }}'
-  flags:
-    - -trimpath
-  ldflags:
-    - '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}}'
-  goos:
-    - freebsd
-    - windows
-    - linux
-    - darwin
-  goarch:
-    - amd64
-    - '386'
-    - arm
-    - arm64
-  ignore:
-    - goos: darwin
-      goarch: '386'
-  binary: '{{ .ProjectName }}_v{{ .Version }}'
+  - id: terraform-provider-extip
+    env:
+      - CGO_ENABLED=0
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    flags:
+      - -trimpath
+    ldflags:
+      - '-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}'
+    goos:
+      - freebsd
+      - windows
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - '386'
+      - arm
+      - arm64
+    ignore:
+      # Skip 32-bit darwin
+      - goos: darwin
+        goarch: '386'
+      # Skip 32-bit arm on Windows (not common)
+      - goos: windows
+        goarch: arm
+    binary: '{{ .ProjectName }}_v{{ .Version }}'
+
 archives:
-- format: zip
-  name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+  - format: zip
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
 checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
   algorithm: sha256
+
 signs:
   - artifacts: checksum
     args:
-      # if you are using this is a GitHub action or some other automated pipeline, you 
-      # need to pass the batch flag to indicate its not interactive.
       - "--batch"
       - "--local-user"
-      - "{{ .Env.GPG_FINGERPRINT }}" # set this environment variable for your signing key
+      - "{{ .Env.GPG_FINGERPRINT }}"
       - "--output"
       - "${signature}"
       - "--detach-sign"
       - "${artifact}"
+
 release:
-  # If you want to manually examine the release before its live, uncomment this line:
-  # draft: true
+  # Repo in which the release will be created.
+  github:
+    owner: petems
+    name: terraform-provider-extip
+
+  # If set to true, will not auto-publish the release.
+  draft: false
+
+  # Whether to remove existing draft releases
+  replace_existing_draft: true
+
+  # Useful if you want to delay the creation of the tag in the remote.
+  disable: false
+
+  # Set this to true if you want to disable just the artifact upload to the release.
+  skip_upload: false
+
+  # You can change the name of the release.
+  name_template: "{{.Tag}}"
+
 changelog:
-  skip: true
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^test:'
+      - '^chore:'
+      - '^docs:'
+      - Merge pull request
+      - Merge remote-tracking branch
+  groups:
+    - title: 'New Features'
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 10
+    - title: Other
+      order: 999

@@ -1,3 +1,10 @@
+## [0.2.6](https://github.com/petems/terraform-provider-extip/compare/v0.2.5...v0.2.6) (2025-08-02)
+
+
+### Bug Fixes
+
+* disable coverage on Windows CI to avoid .out import issue ([18fc286](https://github.com/petems/terraform-provider-extip/commit/18fc286fc9da15ee4528251c04f2eda21fde66fd))
+
 ## [0.2.5](https://github.com/petems/terraform-provider-extip/compare/v0.2.4...v0.2.5) (2025-08-02)
 
 

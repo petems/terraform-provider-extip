@@ -60,7 +60,7 @@ jobs:
       - name: Run tests
         run: |
           # Skip slow acceptance tests that require Terraform download
-          go test -short -race -coverprofile=coverage.out -covermode=atomic -timeout=60s ./...
+          go test -mod=readonly -short -race -coverprofile=coverage.out -covermode=atomic -timeout=60s ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

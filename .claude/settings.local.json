@@ -19,7 +19,8 @@
       "Bash(golangci-lint:*)",
       "Bash(git rev-list:*)",
       "Bash(git reset:*)",
-      "Bash(gh workflow:*)"
+      "Bash(gh workflow:*)",
+      "Bash(make docs-generate:*)"
     ],
     "deny": []
   }

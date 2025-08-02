@@ -1,3 +1,10 @@
+## [0.2.1](https://github.com/petems/terraform-provider-extip/compare/v0.2.0...v0.2.1) (2025-08-02)
+
+
+### Bug Fixes
+
+* resolve all remaining GitHub Actions workflow failures ([8b3a7e6](https://github.com/petems/terraform-provider-extip/commit/8b3a7e6ca671c2e415fef50d75747ed313059ac3))
+
 # [0.2.0](https://github.com/petems/terraform-provider-extip/compare/v0.1.2...v0.2.0) (2025-08-01)
 
 

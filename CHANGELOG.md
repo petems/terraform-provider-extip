@@ -1,3 +1,10 @@
+## [0.2.2](https://github.com/petems/terraform-provider-extip/compare/v0.2.1...v0.2.2) (2025-08-02)
+
+
+### Bug Fixes
+
+* remove -mod=readonly from CI test command ([42adcfb](https://github.com/petems/terraform-provider-extip/commit/42adcfb2a051519118c5d02009bdc0515e7921e4))
+
 ## [0.2.1](https://github.com/petems/terraform-provider-extip/compare/v0.2.0...v0.2.1) (2025-08-02)
 
 

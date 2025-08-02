@@ -112,6 +112,10 @@ jobs:
       - name: Generate documentation
         run: |
           tfplugindocs generate
+          # Remove excessive blank lines (replace 4+ consecutive blank lines with 1)
+          find docs -name "*.md" -exec sed -i '/^$/N;/^\n$/N;/^\n\n$/N;/^\n\n\n$/d' {} \;
+          # Wrap bare URLs for markdown compliance
+          find docs -name "*.md" -exec sed -i 's|defaults to https://checkip.amazonaws.com/|defaults to <https://checkip.amazonaws.com/>|g' {} \;
 
       - name: Check for schema changes
         run: |

@@ -60,12 +60,13 @@ jobs:
       - name: Run tests
         run: |
           # Skip slow acceptance tests that require Terraform download
-          go test -short -race -coverprofile=coverage.out -covermode=atomic -timeout=60s ./...
+          mkdir -p coverage
+          go test -short -race -coverprofile=coverage/coverage.out -covermode=atomic -timeout=60s ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.out
+          file: ./coverage/coverage.out
           flags: unittests-go${{ matrix.go-version }}
           name: codecov-go${{ matrix.go-version }}
           fail_ci_if_error: false
@@ -153,7 +154,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.out
+          file: ./coverage/coverage.out
           flags: acceptance
           name: codecov-acceptance
 

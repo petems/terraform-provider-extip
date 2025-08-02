@@ -1,3 +1,10 @@
+## [0.2.5](https://github.com/petems/terraform-provider-extip/compare/v0.2.4...v0.2.5) (2025-08-02)
+
+
+### Bug Fixes
+
+* use -mod=mod in CI tests to avoid vendor directory conflicts ([7332ef3](https://github.com/petems/terraform-provider-extip/commit/7332ef317907311db614c11cb2c86fe932751f5f))
+
 ## [0.2.4](https://github.com/petems/terraform-provider-extip/compare/v0.2.3...v0.2.4) (2025-08-02)
 
 

@@ -58,10 +58,17 @@ jobs:
         if: matrix.go-version == env.GO_VERSION
 
       - name: Run tests
+        shell: bash
         run: |
           # Skip slow acceptance tests that require Terraform download
-          mkdir -p coverage
-          go test -mod=mod -short -race -coverprofile=coverage/coverage.out -covermode=atomic -timeout=60s ./...
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            # Windows has issues with coverage files, run without coverage
+            go test -short -race -timeout=60s ./...
+          else
+            # Linux/macOS can handle coverage normally
+            mkdir -p coverage
+            go test -short -race -coverprofile=coverage/coverage.out -covermode=atomic -timeout=60s ./...
+          fi
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -70,8 +77,8 @@ jobs:
           flags: unittests-go${{ matrix.go-version }}
           name: codecov-go${{ matrix.go-version }}
           fail_ci_if_error: false
-        # Only upload coverage for latest Go version
-        if: matrix.go-version == env.GO_VERSION
+        # Only upload coverage for latest Go version and non-Windows OS
+        if: matrix.go-version == env.GO_VERSION && runner.os != 'Windows'
 
   test-acceptance:
     name: Acceptance Tests

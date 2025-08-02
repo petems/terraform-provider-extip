@@ -1,3 +1,15 @@
+# [2.0.0](https://github.com/petems/terraform-provider-extip/compare/v1.0.0...v2.0.0) (2025-08-02)
+
+
+### Features
+
+* complete GitHub Actions workflow fixes and CI/CD pipeline ([5c9e35d](https://github.com/petems/terraform-provider-extip/commit/5c9e35d8b46ec877f9ff818ff6a3f9a8d1b943d8))
+
+
+### BREAKING CHANGES
+
+* Upgraded from Terraform Plugin SDK v1 to v2
+
 ## [0.2.6](https://github.com/petems/terraform-provider-extip/compare/v0.2.5...v0.2.6) (2025-08-02)
 
 

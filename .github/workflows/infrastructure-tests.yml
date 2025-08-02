@@ -111,7 +111,7 @@ jobs:
 
       - name: Generate documentation
         run: |
-          tfplugindocs generate --rendered-provider-name="External IP Provider"
+          tfplugindocs generate
 
       - name: Check for schema changes
         run: |

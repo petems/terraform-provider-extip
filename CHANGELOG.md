@@ -1,3 +1,10 @@
+## [0.2.4](https://github.com/petems/terraform-provider-extip/compare/v0.2.3...v0.2.4) (2025-08-02)
+
+
+### Bug Fixes
+
+* standardize workflow documentation processing and fix CI coverage ([f859254](https://github.com/petems/terraform-provider-extip/commit/f859254c0128acb39ec7c0777f6c4139c59f94e4))
+
 ## [0.2.3](https://github.com/petems/terraform-provider-extip/compare/v0.2.2...v0.2.3) (2025-08-02)
 
 

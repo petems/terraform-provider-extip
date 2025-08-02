@@ -61,7 +61,7 @@ jobs:
         run: |
           # Skip slow acceptance tests that require Terraform download
           mkdir -p coverage
-          go test -short -race -coverprofile=coverage/coverage.out -covermode=atomic -timeout=60s ./...
+          go test -mod=mod -short -race -coverprofile=coverage/coverage.out -covermode=atomic -timeout=60s ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

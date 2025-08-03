@@ -28,6 +28,16 @@ func GetProviderSchemaRequest(in *tfplugin6.GetProviderSchema_Request) *tfprotov
 	return resp
 }
 
+func GetResourceIdentitySchemasRequest(in *tfplugin6.GetResourceIdentitySchemas_Request) *tfprotov6.GetResourceIdentitySchemasRequest {
+	if in == nil {
+		return nil
+	}
+
+	resp := &tfprotov6.GetResourceIdentitySchemasRequest{}
+
+	return resp
+}
+
 func ValidateProviderConfigRequest(in *tfplugin6.ValidateProviderConfig_Request) *tfprotov6.ValidateProviderConfigRequest {
 	if in == nil {
 		return nil
@@ -46,8 +56,9 @@ func ConfigureProviderRequest(in *tfplugin6.ConfigureProvider_Request) *tfprotov
 	}
 
 	resp := &tfprotov6.ConfigureProviderRequest{
-		Config:           DynamicValue(in.Config),
-		TerraformVersion: in.TerraformVersion,
+		Config:             DynamicValue(in.Config),
+		TerraformVersion:   in.TerraformVersion,
+		ClientCapabilities: ConfigureProviderClientCapabilities(in.ClientCapabilities),
 	}
 
 	return resp

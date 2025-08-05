@@ -1,9 +1,10 @@
 name: Provider Registry
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       tag:
@@ -22,7 +23,7 @@ jobs:
   publish-to-registry:
     name: Publish to Terraform Registry
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_branch, 'v')) || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
@@ -85,9 +86,12 @@ jobs:
 
       - name: Verify release artifacts
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             TAG="${{ github.event.inputs.tag }}"
+          elif [ "${{ github.event_name }}" == "workflow_run" ]; then
+            TAG="${{ github.event.workflow_run.head_branch }}"
+          else
+            TAG=${GITHUB_REF#refs/tags/}
           fi
           
           echo "Checking release artifacts for tag: $TAG"
@@ -103,9 +107,12 @@ jobs:
 
       - name: Validate provider signing
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             TAG="${{ github.event.inputs.tag }}"
+          elif [ "${{ github.event_name }}" == "workflow_run" ]; then
+            TAG="${{ github.event.workflow_run.head_branch }}"
+          else
+            TAG=${GITHUB_REF#refs/tags/}
           fi
           
           echo "Validating GPG signatures for release $TAG"
@@ -126,9 +133,12 @@ jobs:
 
       - name: Notify registry readiness
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             TAG="${{ github.event.inputs.tag }}"
+          elif [ "${{ github.event_name }}" == "workflow_run" ]; then
+            TAG="${{ github.event.workflow_run.head_branch }}"
+          else
+            TAG=${GITHUB_REF#refs/tags/}
           fi
           
           echo "🎉 Provider release $TAG is ready for Terraform Registry!"

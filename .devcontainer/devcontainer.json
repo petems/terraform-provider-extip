@@ -33,11 +33,6 @@
   },
 
   "onCreateCommand": "bash .devcontainer/setup.sh",
-  
-  "postCreateCommand": [
-    "go mod download",
-    "make ci-setup"
-  ],
 
   "remoteUser": "vscode",
   
